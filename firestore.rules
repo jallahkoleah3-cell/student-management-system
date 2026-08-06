@@ -1,0 +1,152 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function: Check if user has a specific role
+    function hasRole(role) {
+      return isAuthenticated() && 
+        request.auth.token.role == role;
+    }
+    
+    // Helper function: Check if user is Admin
+    function isAdmin() {
+      return hasRole('Admin');
+    }
+    
+    // Helper function: Check if user is Teacher
+    function isTeacher() {
+      return hasRole('Teacher');
+    }
+    
+    // Helper function: Check if user is Student
+    function isStudent() {
+      return hasRole('Student');
+    }
+    
+    // Helper function: Check if user is Parent
+    function isParent() {
+      return hasRole('Parent');
+    }
+    
+    // Helper function: Get user's UID
+    function getUID() {
+      return request.auth.uid;
+    }
+    
+    // ---------- USERS COLLECTION ----------
+    match /users/{userId} {
+      // Users can read their own data
+      allow read: if isAuthenticated() && 
+        (isAdmin() || request.auth.uid == userId);
+      
+      // Users can update their own data (but not role)
+      allow update: if isAuthenticated() && 
+        (isAdmin() || request.auth.uid == userId) &&
+        !('role' in request.resource.data);
+      
+      // Only admins can create or delete users
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ---------- STUDENTS COLLECTION ----------
+    match /students/{studentId} {
+      // Admins and Teachers can read all students
+      // Students can read their own data
+      allow read: if isAuthenticated() && 
+        (isAdmin() || isTeacher() || 
+         (isStudent() && request.auth.uid == studentId));
+      
+      // Only Admins can create, update, delete students
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ---------- TEACHERS COLLECTION ----------
+    match /teachers/{teacherId} {
+      // Admins can read all teachers
+      // Teachers can read their own data
+      allow read: if isAuthenticated() && 
+        (isAdmin() || request.auth.uid == teacherId);
+      
+      // Only Admins can create, update, delete teachers
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ---------- GRADES COLLECTION ----------
+    match /grades/{gradeId} {
+      // Admins and Teachers can read all grades
+      // Students can read their own grades
+      allow read: if isAuthenticated() && 
+        (isAdmin() || isTeacher() || 
+         (isStudent() && resource.data.student_id == request.auth.uid));
+      
+      // Admins and Teachers can create/update grades
+      allow create: if isAdmin() || isTeacher();
+      allow update: if isAdmin() || isTeacher();
+      
+      // Only Admins can delete grades
+      allow delete: if isAdmin();
+    }
+    
+    // ---------- ATTENDANCE COLLECTION ----------
+    match /attendance/{attendanceId} {
+      // Admins and Teachers can read all attendance
+      // Students can read their own attendance
+      allow read: if isAuthenticated() && 
+        (isAdmin() || isTeacher() || 
+         (isStudent() && resource.data.student_id == request.auth.uid));
+      
+      // Admins and Teachers can create attendance
+      allow create: if isAdmin() || isTeacher();
+      allow update: if isAdmin() || isTeacher();
+      
+      // Only Admins can delete attendance
+      allow delete: if isAdmin();
+    }
+    
+    // ---------- ANNOUNCEMENTS COLLECTION ----------
+    match /announcements/{announcementId} {
+      // All authenticated users can read announcements
+      allow read: if isAuthenticated();
+      
+      // Admins and Teachers can create announcements
+      allow create: if isAdmin() || isTeacher();
+      
+      // Admins can update/delete announcements
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ---------- NOTIFICATIONS COLLECTION ----------
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      
+      // System creates notifications
+      allow create: if true;
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() && 
+        resource.data.user_id == request.auth.uid;
+      
+      // Only Admins can delete notifications
+      allow delete: if isAdmin();
+    }
+    
+    // ---------- DEFAULT DENY ----------
+    // Deny all other operations
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
