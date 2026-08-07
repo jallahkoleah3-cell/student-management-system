@@ -198,7 +198,7 @@ def main():
                 "📅 My Attendance": student_attendance,
                 "📢 Announcements": student_announcements.show,
             }
-        elif role == 'Parent':
+#        elif role == 'Parent':
             pages = {
                 "📊 Dashboard": parent_dashboard,
                 "👨‍👩‍👦 My Children": parent_children,
@@ -825,7 +825,3 @@ def student_attendance(user):
         
         # Mini chart
         status_counts = df['status'].value_counts().reset_index()
-        status_counts.columns = ['Status', 'Count']
-        fig = px.pie(status_counts, values='Count', names='Status', title="Attendance Breakdown", color='Status')
-        fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig, use_container_width=True)
