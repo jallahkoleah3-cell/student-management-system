@@ -16,6 +16,19 @@ import utils.pages.admin_announcements as admin_announcements
 import utils.pages.teacher_announcements as teacher_announcements
 import utils.pages.student_announcements as student_announcements
 
+import traceback
+import sys
+
+try:
+    # ALL your existing imports go here...
+    import pandas as pd
+    from datetime import datetime, timedelta
+    # ... etc ...
+except Exception as e:
+    st.error(f"❌ Import Error: {e}")
+    st.code(traceback.format_exc())
+    st.stop()
+
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
     page_title="Student Management System",
