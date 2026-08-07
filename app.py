@@ -623,83 +623,93 @@ def teacher_attendance(user):
         else:
             st.warning(f"⚠️ {msg}")
 
-# ---------- STUDENT PAGES (FIXED WITH DEBUG) ----------
+# ---------- STUDENT PAGES (PROFESSIONAL VERSION) ----------
 def student_dashboard(user):
     st.header("📚 Student Dashboard")
     
-    # 🔍 DEBUG: Show user info
-    st.subheader("🔍 Debug Information")
-    st.json({
-        "user_uid": user.get('uid'),
-        "user_email": user.get('email'),
-        "user_student_id": user.get('student_id'),
-        "user_role": user.get('role'),
-        "user_full_name": user.get('full_name')
-    })
-    
     # Get the student's ID from their user data
     student_id = user.get('student_id') or user.get('uid')
-    st.write(f"🔍 student_id from user data: {student_id}")
     
     # If no student_id, try to find it from the users collection
     if not student_id:
-        st.write("🔍 No student_id found, searching by email...")
         email = user.get('email')
         if email:
             students = db.get_all_students()
-            st.write(f"🔍 Found {len(students)} students in database")
             for s in students:
-                st.write(f"🔍 Checking student: {s.get('email')} vs {email}")
                 if s.get('email') == email:
                     student_id = s.get('student_id') or s.get('uid')
-                    st.write(f"🔍 Found student_id: {student_id}")
                     break
     
     # If still no student_id, try using uid directly
     if not student_id:
-        st.write("🔍 No student_id found, using uid as fallback")
         student_id = user.get('uid')
-    
-    st.write(f"🔍 Final student_id: {student_id}")
     
     # Get student data
     student = db.get_student(student_id)
-    st.write(f"🔍 Student data found: {student is not None}")
     
     if student:
-        st.success("✅ Student profile found!")
-        st.json(student)
-        
         col1, col2 = st.columns(2)
         
         with col1:
             st.subheader("👤 My Profile")
-            profile_data = {
-                "Name": student.get('full_name', 'N/A'),
-                "Student ID": student.get('student_id', 'N/A'),
-                "Grade": student.get('grade', 'N/A'),
-                "Section": student.get('section', 'N/A'),
-                "Email": student.get('email', 'N/A'),
-            }
-            st.json(profile_data)
+            
+            # Professional profile card
+            st.markdown(f"""
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #e9ecef;">
+                <p style="margin: 8px 0; font-size: 16px;">📛 <strong>Full Name:</strong> {student.get('full_name', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">🆔 <strong>Student ID:</strong> {student.get('student_id', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">📚 <strong>Grade:</strong> {student.get('grade', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">📖 <strong>Section:</strong> {student.get('section', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">📧 <strong>Email:</strong> {student.get('email', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">📱 <strong>Phone:</strong> {student.get('phone', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">📍 <strong>Address:</strong> {student.get('address', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">👤 <strong>Gender:</strong> {student.get('gender', 'N/A')}</p>
+                <p style="margin: 8px 0; font-size: 16px;">📅 <strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">{student.get('status', 'N/A')}</span></p>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
             st.subheader("📊 Quick Stats")
             grades = db.get_student_grades(student_id)
             attendance = db.get_student_attendance(student_id)
             
-            if grades:
-                avg = sum([g['marks'] for g in grades]) / len(grades)
-                st.metric("Average Grade", f"{avg:.1f}")
-            else:
-                st.metric("Average Grade", "No grades yet")
+            # Stats cards
+            col_stats1, col_stats2 = st.columns(2)
             
-            if attendance:
-                present = len([a for a in attendance if a['status'] == 'Present'])
-                total = len(attendance)
-                st.metric("Attendance", f"{(present/total)*100:.1f}%" if total > 0 else "0%")
-            else:
-                st.metric("Attendance", "No records yet")
+            with col_stats1:
+                if grades:
+                    avg = sum([g['marks'] for g in grades]) / len(grades)
+                    st.markdown(f"""
+                    <div style="background-color: #d4edda; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #c3e6cb;">
+                        <h2 style="margin: 0; color: #155724;">{avg:.1f}%</h2>
+                        <p style="margin: 0; color: #155724;">📈 Average Grade</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("📝 No grades yet")
+            
+            with col_stats2:
+                if attendance:
+                    present = len([a for a in attendance if a['status'] == 'Present'])
+                    total = len(attendance)
+                    percentage = (present / total * 100) if total > 0 else 0
+                    st.markdown(f"""
+                    <div style="background-color: #cce5ff; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #b8daff;">
+                        <h2 style="margin: 0; color: #004085;">{percentage:.1f}%</h2>
+                        <p style="margin: 0; color: #004085;">📅 Attendance</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("📅 No attendance records yet")
+            
+            # Additional stats
+            st.markdown("<br>", unsafe_allow_html=True)
+            with st.container():
+                col_info1, col_info2 = st.columns(2)
+                with col_info1:
+                    st.metric("📚 Total Subjects", len(set([g.get('subject') for g in grades])) if grades else 0)
+                with col_info2:
+                    st.metric("📝 Total Grades", len(grades) if grades else 0)
         
         col1, col2 = st.columns(2)
         
@@ -708,132 +718,112 @@ def student_dashboard(user):
             grades = db.get_student_grades(student_id)
             if grades:
                 df = pd.DataFrame(grades)
-                st.dataframe(df, use_container_width=True)
+                # Select and rename columns for display
+                display_df = df[['subject', 'marks', 'grade', 'exam_type', 'date']].copy()
+                display_df.columns = ['Subject', 'Marks', 'Grade', 'Exam Type', 'Date']
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
             else:
-                st.info("No grades yet.")
+                st.info("📭 No grades yet.")
         
         with col2:
             st.subheader("📅 My Attendance")
             attendance = db.get_student_attendance(student_id)
             if attendance:
                 df = pd.DataFrame(attendance)
-                st.dataframe(df, use_container_width=True)
+                # Select and rename columns for display
+                display_df = df[['date', 'status']].copy()
+                display_df.columns = ['Date', 'Status']
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
             else:
-                st.info("No attendance records.")
+                st.info("📭 No attendance records yet.")
     else:
-        st.warning("⚠️ Student profile not found.")
-        st.info("Please contact the administrator to link your student account.")
-        
-        # Show all students in database (for debugging)
-        with st.expander("🔍 All Students in Database"):
-            all_students = db.get_all_students()
-            if all_students:
-                st.dataframe(pd.DataFrame(all_students))
-            else:
-                st.write("No students found in database.")
+        st.warning("⚠️ Student profile not found. Please contact admin.")
 
 def student_profile(user):
     st.header("👤 My Profile")
     
-    # Try to find student by email first
-    student = None
-    if user.get('email'):
-        students = db.get_all_students()
-        for s in students:
-            if s.get('email') == user['email']:
-                student = s
-                break
-    
-    # If not found, try by uid
-    if not student and user.get('uid'):
-        student = db.get_student(user['uid'])
-    
-    # If still not found, try by student_id
-    if not student and user.get('student_id'):
-        student = db.get_student(user['student_id'])
+    # Get student_id from user data
+    student_id = user.get('student_id') or user.get('uid')
+    student = db.get_student(student_id)
     
     if student:
-        st.json(student)
+        # Professional profile card
+        st.markdown(f"""
+        <div style="background-color: #f8f9fa; padding: 25px; border-radius: 12px; border: 1px solid #e9ecef; max-width: 600px;">
+            <h3 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">👤 Student Profile</h3>
+            <p style="margin: 8px 0;"><strong>📛 Full Name:</strong> {student.get('full_name', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>🆔 Student ID:</strong> {student.get('student_id', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>📚 Grade:</strong> {student.get('grade', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>📖 Section:</strong> {student.get('section', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>📧 Email:</strong> {student.get('email', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>📱 Phone:</strong> {student.get('phone', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>📍 Address:</strong> {student.get('address', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>👤 Gender:</strong> {student.get('gender', 'N/A')}</p>
+            <p style="margin: 8px 0;"><strong>📅 Status:</strong> <span style="color: #28a745; font-weight: bold;">{student.get('status', 'N/A')}</span></p>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.warning("Profile not found")
-        st.info("Debug: Please check your student account is properly linked.")
+        st.warning("⚠️ Profile not found")
 
 def student_grades(user):
     st.header("📈 My Grades")
     
-    # Try to find student by email first
-    student_id = None
-    if user.get('email'):
-        students = db.get_all_students()
-        for s in students:
-            if s.get('email') == user['email']:
-                student_id = s.get('student_id') or s.get('uid')
-                break
-    
-    if not student_id and user.get('student_id'):
-        student_id = user['student_id']
-    
-    if not student_id and user.get('uid'):
-        student_id = user['uid']
-    
-    grades = db.get_student_grades(student_id) if student_id else []
+    # Get student_id from user data
+    student_id = user.get('student_id') or user.get('uid')
+    grades = db.get_student_grades(student_id)
     
     if grades:
         df = pd.DataFrame(grades)
-        st.dataframe(df, use_container_width=True)
-        fig = px.bar(df, x='subject', y='marks', title="My Grades by Subject", color='grade')
+        # Clean display
+        display_df = df[['subject', 'marks', 'grade', 'exam_type', 'date']].copy()
+        display_df.columns = ['Subject', 'Marks', 'Grade', 'Exam Type', 'Date']
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        
+        # Chart
+        fig = px.bar(df, x='subject', y='marks', title="📊 My Grades by Subject", color='grade', text='marks')
+        fig.update_traces(textposition='outside')
+        fig.update_layout(showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Summary stats
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📊 Average", f"{df['marks'].mean():.1f}%")
+        with col2:
+            st.metric("🏆 Highest", f"{df['marks'].max()}%")
+        with col3:
+            st.metric("📉 Lowest", f"{df['marks'].min()}%")
     else:
-        st.info("No grades available.")
+        st.info("📭 No grades available.")
 
 def student_attendance(user):
     st.header("📅 My Attendance")
     
-    # Try to find student by email first
-    student_id = None
-    if user.get('email'):
-        students = db.get_all_students()
-        for s in students:
-            if s.get('email') == user['email']:
-                student_id = s.get('student_id') or s.get('uid')
-                break
-    
-    if not student_id and user.get('student_id'):
-        student_id = user['student_id']
-    
-    if not student_id and user.get('uid'):
-        student_id = user['uid']
-    
-    attendance = db.get_student_attendance(student_id) if student_id else []
+    # Get student_id from user data
+    student_id = user.get('student_id') or user.get('uid')
+    attendance = db.get_student_attendance(student_id)
     
     if attendance:
         df = pd.DataFrame(attendance)
-        st.dataframe(df, use_container_width=True)
+        # Clean display
+        display_df = df[['date', 'status']].copy()
+        display_df.columns = ['Date', 'Status']
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
         
+        # Statistics
         present = len(df[df['status'] == 'Present'])
         total = len(df)
-        st.metric("Attendance Percentage", f"{(present/total)*100:.1f}%" if total > 0 else "0%")
-    else:
-        st.info("No attendance records.")
-
-# ---------- PARENT PAGES ----------
-def parent_dashboard(user):
-    st.header("👨‍👩‍👦 Parent Dashboard")
-    st.info("Parent dashboard coming soon!")
-
-def parent_children(user):
-    st.header("👨‍👩‍👦 My Children")
-    st.info("View your children's progress coming soon!")
-
-def parent_progress(user):
-    st.header("📈 Children's Progress")
-    st.info("Progress tracking coming soon!")
-
-# ---------- DEFAULT ----------
-def default_dashboard(user):
-    st.header("📊 Dashboard")
-    st.write("Welcome to the Student Management System!")
-
-# ---------- RUN APP ----------
-if __name__ == "__main__":
-    main()
+        percentage = (present / total * 100) if total > 0 else 0
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📅 Total Days", total)
+        with col2:
+            st.metric("✅ Present", present)
+        with col3:
+            st.metric("📊 Attendance", f"{percentage:.1f}%")
+        
+        # Mini chart
+        status_counts = df['status'].value_counts().reset_index()
+        status_counts.columns = ['Status', 'Count']
+        fig = px.pie(status_counts, values='
