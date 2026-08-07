@@ -1,0 +1,12 @@
+Firebase Configuration
+FIREBASE_CREDENTIALS=./firebase-key.json
+FIREBASE_DATABASE_URL=https://student-management-syste-31b00.firebaseio.com
+FIREBASE_STORAGE_BUCKET=student-management-syste-31b00.appspot.com
+
+# Admin Account
+ADMIN_EMAIL=admin@school.com
+ADMIN_PASSWORD=admin123
+
+# App Settings
+SECRET_KEY=GB13eKTozE0ENb-HjeNAPPMeGX2V4AfqQwCTZtDsWLs
+APP_NAME=Student Management System
