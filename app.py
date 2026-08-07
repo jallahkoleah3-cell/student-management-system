@@ -29,6 +29,17 @@ except Exception as e:
     st.code(traceback.format_exc())
     st.stop()
 
+# ---------- STREAMLIT CLOUD SECRETS ----------
+import os
+import json
+
+# Load secrets from Streamlit Cloud
+if 'FIREBASE_CREDENTIALS' in os.environ:
+    print("✅ Running on Streamlit Cloud - loading secrets from environment")
+    # The Firebase credentials are already handled in firebase_db.py
+else:
+    print("🔍 Running locally - using .env file")
+
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
     page_title="Student Management System",

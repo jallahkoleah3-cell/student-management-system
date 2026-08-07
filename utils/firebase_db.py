@@ -12,16 +12,101 @@ load_dotenv()
 # ---------- LOAD FIREBASE CREDENTIALS ----------
 def get_firebase_creds():
     """Get Firebase credentials from environment or secrets"""
+    import streamlit as st
+    
     # Check if running on Streamlit Cloud
     if 'FIREBASE_CREDENTIALS' in os.environ:
         print("🔍 Found FIREBASE_CREDENTIALS in environment")
         creds_json = os.environ['FIREBASE_CREDENTIALS']
         print(f"🔍 Credentials length: {len(creds_json)} characters")
-        # Load from Streamlit secrets
+        
+        # Load from environment
         if isinstance(creds_json, str):
             try:
                 creds = json.loads(creds_json)
-                print("✅ Successfully parsed JSON credentials")
+                print("✅ Successfully parsed JSON credentials from environment")
+            except Exception as e:
+                print(f"❌ Failed to parse JSON: {e}")
+                creds = creds_json
+        else:
+            creds = creds_json
+        
+        # Write to a temporary file
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+        json.dump(creds, temp_file)
+        temp_file.close()
+        return temp_file.name
+    
+    # Check if running on Streamlit Cloud with secrets
+    elif hasattr(st, 'secrets') and 'FIREBASE_CREDENTIALS' in st.secrets:
+        print("🔍 Found FIREBASE_CREDENTIALS in Streamlit secrets")
+        creds_json = st.secrets['FIREBASE_CREDENTIALS']
+        print(f"🔍 Credentials length: {len(str(creds_json))} characters")
+        
+        # Load from secrets
+        if isinstance(creds_json, str):
+            try:
+                creds = json.loads(creds_json)
+                print("✅ Successfully parsed JSON credentials from secrets")
+            except Exception as e:
+                print(f"❌ Failed to parse JSON: {e}")
+                creds = creds_json
+        else:
+            creds = creds_json
+        
+        # Write to a temporary file
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+        json.dump(creds, temp_file)
+        temp_file.close()
+        return temp_file.name
+    
+    # Local development - use local file
+    elif os.path.exists('firebase-key.json'):
+        print("🔍 Found firebase-key.json locally")
+        return 'firebase-key.json'
+    elif os.path.exists('../firebase-key.json'):
+        print("🔍 Found firebase-key.json in parent directory")
+        return '../firebase-key.json'
+    else:
+        print("❌ No credentials found anywhere!")
+        return Nonedef get_firebase_creds():
+    """Get Firebase credentials from environment or secrets"""
+    import streamlit as st
+    
+    # Check if running on Streamlit Cloud
+    if 'FIREBASE_CREDENTIALS' in os.environ:
+        print("🔍 Found FIREBASE_CREDENTIALS in environment")
+        creds_json = os.environ['FIREBASE_CREDENTIALS']
+        print(f"🔍 Credentials length: {len(creds_json)} characters")
+        
+        # Load from environment
+        if isinstance(creds_json, str):
+            try:
+                creds = json.loads(creds_json)
+                print("✅ Successfully parsed JSON credentials from environment")
+            except Exception as e:
+                print(f"❌ Failed to parse JSON: {e}")
+                creds = creds_json
+        else:
+            creds = creds_json
+        
+        # Write to a temporary file
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+        json.dump(creds, temp_file)
+        temp_file.close()
+        return temp_file.name
+    
+    # Check if running on Streamlit Cloud with secrets
+    elif hasattr(st, 'secrets') and 'FIREBASE_CREDENTIALS' in st.secrets:
+        print("🔍 Found FIREBASE_CREDENTIALS in Streamlit secrets")
+        creds_json = st.secrets['FIREBASE_CREDENTIALS']
+        print(f"🔍 Credentials length: {len(str(creds_json))} characters")
+        
+        # Load from secrets
+        if isinstance(creds_json, str):
+            try:
+                creds = json.loads(creds_json)
+                print("✅ Successfully parsed JSON credentials from secrets")
             except Exception as e:
                 print(f"❌ Failed to parse JSON: {e}")
                 creds = creds_json
