@@ -1,7 +1,8 @@
 import streamlit as st
-from .firebase_db import db
 from datetime import datetime
 from firebase_admin import auth
+
+# IMPORTANT: db is imported lazily inside functions to avoid circular import
 
 def login_user(email, password):
     """
@@ -9,6 +10,9 @@ def login_user(email, password):
     Returns: (user_data, error_message)
     """
     try:
+        # Import db here to avoid circular import
+        from .firebase_db import db
+        
         # First, check if user exists in Firestore
         users_ref = db.db.collection('users').where('email', '==', email).stream()
         
@@ -68,6 +72,9 @@ def login_user(email, password):
 def log_user_activity(uid, action, details=""):
     """Log user activity"""
     try:
+        # Import db here to avoid circular import
+        from .firebase_db import db
+        
         activity_data = {
             'user_id': uid,
             'action': action,
@@ -89,4 +96,12 @@ def get_current_role():
 
 def is_authenticated():
     """Check if user is logged in"""
-    return 'user' in st.session_state and st.session_state.user
+    return 'user' in st.session_state and st.session_state.user is not None
+
+def logout_user():
+    """Logout the current user"""
+    user = get_current_user()
+    if user:
+        log_user_activity(user.get('uid'), "Logout", "User logged out")
+    st.session_state.user = None
+    st.session_state.logged_in = False
