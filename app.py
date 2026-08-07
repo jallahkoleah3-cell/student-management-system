@@ -204,13 +204,13 @@ def main():
                 "📢 Announcements": teacher_announcements.show,
             }
         elif role == 'Student':
-            pages = {
-                "📊 Dashboard": student_dashboard,
-                "👤 My Profile": student_profile,
-                "📈 My Grades": student_grades,
-                "📅 My Attendance": student_attendance,
-                "📢 Announcements": student_announcements.show,
-            }
+#            pages = {
+ #               "📊 Dashboard": student_dashboard,
+ #               "👤 My Profile": student_profile,
+ #               "📈 My Grades": student_grades,
+ #               "📅 My Attendance": student_attendance,
+ #               "📢 Announcements": student_announcements.show,
+ #           }
 #        elif role == 'Parent':
             pages = {
                 "📊 Dashboard": parent_dashboard,
@@ -838,3 +838,9 @@ def student_attendance(user):
         
         # Mini chart
         status_counts = df['status'].value_counts().reset_index()
+        status_counts.columns = ['Status', 'Count']
+        fig = px.pie(status_counts, values='Count', names='Status', title="Attendance Breakdown", color='Status')
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("📭 No attendance records.")
