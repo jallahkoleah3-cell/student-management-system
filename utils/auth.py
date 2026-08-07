@@ -21,6 +21,24 @@ def login_user(email, password):
         if not user_data:
             return None, "User not found!"
         
+        # If user is a student, also get their student_id
+        if user_data.get('role') == 'Student':
+            # Try to get student_id from users collection
+            student_id = user_data.get('student_id')
+            if not student_id:
+                # Try to find student profile by email
+                students = db.get_all_students()
+                for s in students:
+                    if s.get('email') == email:
+                        student_id = s.get('student_id') or s.get('uid')
+                        user_data['student_id'] = student_id
+                        break
+                else:
+                    # If still not found, use uid as fallback
+                    user_data['student_id'] = user_data.get('uid')
+            else:
+                user_data['student_id'] = student_id
+        
         # Check if user exists in Firebase Auth
         try:
             user = auth.get_user_by_email(email)
