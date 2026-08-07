@@ -826,4 +826,6 @@ def student_attendance(user):
         # Mini chart
         status_counts = df['status'].value_counts().reset_index()
         status_counts.columns = ['Status', 'Count']
-        fig = px.pie(status_counts, values='
+        fig = px.pie(status_counts, values='Count', names='Status', title="Attendance Breakdown", color='Status')
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(fig, use_container_width=True)
