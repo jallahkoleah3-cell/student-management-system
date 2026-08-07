@@ -21,23 +21,33 @@ def login_user(email, password):
         if not user_data:
             return None, "User not found!"
         
-        # If user is a student, also get their student_id
+        # If user is a student, get their student_id from the students collection
         if user_data.get('role') == 'Student':
-            # Try to get student_id from users collection
-            student_id = user_data.get('student_id')
-            if not student_id:
-                # Try to find student profile by email
-                students = db.get_all_students()
+            # Search for the student by email in the students collection
+            students = db.get_all_students()
+            found_student_id = None
+            for s in students:
+                if s.get('email') == email:
+                    found_student_id = s.get('student_id') or s.get('uid')
+                    break
+            
+            if found_student_id:
+                user_data['student_id'] = found_student_id
+                print(f"✅ Found student_id: {found_student_id}")
+            else:
+                # Try to find by uid
                 for s in students:
-                    if s.get('email') == email:
-                        student_id = s.get('student_id') or s.get('uid')
-                        user_data['student_id'] = student_id
+                    if s.get('uid') == user_data.get('uid'):
+                        found_student_id = s.get('student_id')
                         break
+                
+                if found_student_id:
+                    user_data['student_id'] = found_student_id
+                    print(f"✅ Found student_id by uid: {found_student_id}")
                 else:
                     # If still not found, use uid as fallback
                     user_data['student_id'] = user_data.get('uid')
-            else:
-                user_data['student_id'] = student_id
+                    print(f"⚠️ Using uid as student_id fallback: {user_data['student_id']}")
         
         # Check if user exists in Firebase Auth
         try:
@@ -79,12 +89,4 @@ def get_current_role():
 
 def is_authenticated():
     """Check if user is logged in"""
-    return 'user' in st.session_state and st.session_state.user is not None
-
-def logout_user():
-    """Logout the current user"""
-    user = get_current_user()
-    if user:
-        log_user_activity(user.get('uid'), "Logout", "User logged out")
-    st.session_state.user = None
-    st.session_state.logged_in = False
+    return 'user' in st.session_state and st.session_state.user

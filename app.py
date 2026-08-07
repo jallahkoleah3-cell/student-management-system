@@ -43,7 +43,6 @@ def show_messages():
 # ---------- SESSION STATE ----------
 def init_session():
     """Initialize session state with cookie persistence"""
-    # Initialize session state variables if they don't exist
     if 'user' not in st.session_state:
         st.session_state.user = None
     if 'logged_in' not in st.session_state:
@@ -57,7 +56,6 @@ def init_session():
     if 'session_initialized' not in st.session_state:
         st.session_state.session_initialized = False
     
-    # 🔥 NEW: Force cookie check on EVERY load
     try:
         cookie_user = controller.get('user_data')
         if cookie_user and not st.session_state.logged_in:
@@ -69,13 +67,11 @@ def init_session():
         print(f"Cookie load error: {e}")
 
 def save_session(user_data):
-    """Save user session to cookie"""
     st.session_state.user = user_data
     st.session_state.logged_in = True
     st.session_state.role = user_data.get('role', 'Unknown')
     
     try:
-        # Prepare data for cookie
         cookie_data = {}
         for key, value in user_data.items():
             if hasattr(value, 'isoformat'):
@@ -101,7 +97,6 @@ def save_session(user_data):
         print(f"❌ Cookie save error: {e}")
 
 def clear_session():
-    """Clear user session"""
     st.session_state.user = None
     st.session_state.logged_in = False
     st.session_state.role = None
@@ -156,10 +151,8 @@ def main():
         st.error("❌ Firebase not initialized!")
         return
     
-    # 🔥 CRITICAL: ALWAYS check cookie FIRST
     init_session()
     
-    # 🔥 DEBUG: Log current state
     print(f"🔍 main: logged_in={st.session_state.logged_in}, user={st.session_state.user is not None}")
     
     if not st.session_state.get('logged_in', False):
@@ -630,14 +623,53 @@ def teacher_attendance(user):
         else:
             st.warning(f"⚠️ {msg}")
 
-# ---------- STUDENT PAGES ----------
+# ---------- STUDENT PAGES (FIXED WITH DEBUG) ----------
 def student_dashboard(user):
     st.header("📚 Student Dashboard")
     
-    student_id = user.get('uid')
+    # 🔍 DEBUG: Show user info
+    st.subheader("🔍 Debug Information")
+    st.json({
+        "user_uid": user.get('uid'),
+        "user_email": user.get('email'),
+        "user_student_id": user.get('student_id'),
+        "user_role": user.get('role'),
+        "user_full_name": user.get('full_name')
+    })
+    
+    # Get the student's ID from their user data
+    student_id = user.get('student_id') or user.get('uid')
+    st.write(f"🔍 student_id from user data: {student_id}")
+    
+    # If no student_id, try to find it from the users collection
+    if not student_id:
+        st.write("🔍 No student_id found, searching by email...")
+        email = user.get('email')
+        if email:
+            students = db.get_all_students()
+            st.write(f"🔍 Found {len(students)} students in database")
+            for s in students:
+                st.write(f"🔍 Checking student: {s.get('email')} vs {email}")
+                if s.get('email') == email:
+                    student_id = s.get('student_id') or s.get('uid')
+                    st.write(f"🔍 Found student_id: {student_id}")
+                    break
+    
+    # If still no student_id, try using uid directly
+    if not student_id:
+        st.write("🔍 No student_id found, using uid as fallback")
+        student_id = user.get('uid')
+    
+    st.write(f"🔍 Final student_id: {student_id}")
+    
+    # Get student data
     student = db.get_student(student_id)
+    st.write(f"🔍 Student data found: {student is not None}")
     
     if student:
+        st.success("✅ Student profile found!")
+        st.json(student)
+        
         col1, col2 = st.columns(2)
         
         with col1:
@@ -659,11 +691,15 @@ def student_dashboard(user):
             if grades:
                 avg = sum([g['marks'] for g in grades]) / len(grades)
                 st.metric("Average Grade", f"{avg:.1f}")
+            else:
+                st.metric("Average Grade", "No grades yet")
             
             if attendance:
                 present = len([a for a in attendance if a['status'] == 'Present'])
                 total = len(attendance)
                 st.metric("Attendance", f"{(present/total)*100:.1f}%" if total > 0 else "0%")
+            else:
+                st.metric("Attendance", "No records yet")
         
         col1, col2 = st.columns(2)
         
@@ -685,23 +721,66 @@ def student_dashboard(user):
             else:
                 st.info("No attendance records.")
     else:
-        st.warning("⚠️ Student profile not found. Contact admin.")
+        st.warning("⚠️ Student profile not found.")
+        st.info("Please contact the administrator to link your student account.")
+        
+        # Show all students in database (for debugging)
+        with st.expander("🔍 All Students in Database"):
+            all_students = db.get_all_students()
+            if all_students:
+                st.dataframe(pd.DataFrame(all_students))
+            else:
+                st.write("No students found in database.")
 
 def student_profile(user):
     st.header("👤 My Profile")
-    student = db.get_student(user.get('uid'))
+    
+    # Try to find student by email first
+    student = None
+    if user.get('email'):
+        students = db.get_all_students()
+        for s in students:
+            if s.get('email') == user['email']:
+                student = s
+                break
+    
+    # If not found, try by uid
+    if not student and user.get('uid'):
+        student = db.get_student(user['uid'])
+    
+    # If still not found, try by student_id
+    if not student and user.get('student_id'):
+        student = db.get_student(user['student_id'])
+    
     if student:
         st.json(student)
     else:
         st.warning("Profile not found")
+        st.info("Debug: Please check your student account is properly linked.")
 
 def student_grades(user):
     st.header("📈 My Grades")
-    grades = db.get_student_grades(user.get('uid'))
+    
+    # Try to find student by email first
+    student_id = None
+    if user.get('email'):
+        students = db.get_all_students()
+        for s in students:
+            if s.get('email') == user['email']:
+                student_id = s.get('student_id') or s.get('uid')
+                break
+    
+    if not student_id and user.get('student_id'):
+        student_id = user['student_id']
+    
+    if not student_id and user.get('uid'):
+        student_id = user['uid']
+    
+    grades = db.get_student_grades(student_id) if student_id else []
+    
     if grades:
         df = pd.DataFrame(grades)
         st.dataframe(df, use_container_width=True)
-        
         fig = px.bar(df, x='subject', y='marks', title="My Grades by Subject", color='grade')
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -709,7 +788,24 @@ def student_grades(user):
 
 def student_attendance(user):
     st.header("📅 My Attendance")
-    attendance = db.get_student_attendance(user.get('uid'))
+    
+    # Try to find student by email first
+    student_id = None
+    if user.get('email'):
+        students = db.get_all_students()
+        for s in students:
+            if s.get('email') == user['email']:
+                student_id = s.get('student_id') or s.get('uid')
+                break
+    
+    if not student_id and user.get('student_id'):
+        student_id = user['student_id']
+    
+    if not student_id and user.get('uid'):
+        student_id = user['uid']
+    
+    attendance = db.get_student_attendance(student_id) if student_id else []
+    
     if attendance:
         df = pd.DataFrame(attendance)
         st.dataframe(df, use_container_width=True)
