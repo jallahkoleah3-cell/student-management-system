@@ -3,16 +3,60 @@ from firebase_admin import credentials, firestore, auth
 from datetime import datetime
 import json
 import os
+import tempfile
 from dotenv import load_dotenv
 from utils.id_generator import id_generator
 
 load_dotenv()
 
+# ---------- LOAD FIREBASE CREDENTIALS ----------
+def get_firebase_creds():
+    """Get Firebase credentials from environment or secrets"""
+    # Check if running on Streamlit Cloud
+    if 'FIREBASE_CREDENTIALS' in os.environ:
+        print("🔍 Found FIREBASE_CREDENTIALS in environment")
+        creds_json = os.environ['FIREBASE_CREDENTIALS']
+        print(f"🔍 Credentials length: {len(creds_json)} characters")
+        # Load from Streamlit secrets
+        if isinstance(creds_json, str):
+            try:
+                creds = json.loads(creds_json)
+                print("✅ Successfully parsed JSON credentials")
+            except Exception as e:
+                print(f"❌ Failed to parse JSON: {e}")
+                creds = creds_json
+        else:
+            creds = creds_json
+        
+        # Write to a temporary file
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+        json.dump(creds, temp_file)
+        temp_file.close()
+        return temp_file.name
+    
+    # Local development - use local file
+    elif os.path.exists('firebase-key.json'):
+        print("🔍 Found firebase-key.json locally")
+        return 'firebase-key.json'
+    elif os.path.exists('../firebase-key.json'):
+        print("🔍 Found firebase-key.json in parent directory")
+        return '../firebase-key.json'
+    else:
+        print("❌ No credentials found anywhere!")
+        return None
+
 class FirebaseDB:
     def __init__(self):
         try:
-            cred_path = os.getenv('FIREBASE_CREDENTIALS', 'firebase-key.json')
+            # Get credentials path using the helper function
+            cred_path = get_firebase_creds()
+            
+            if cred_path is None:
+                print("❌ Firebase credentials not found!")
+                raise FileNotFoundError("Firebase credentials not found in secrets or local file")
+            
             if not os.path.exists(cred_path):
+                print(f"❌ Credentials file not found at: {cred_path}")
                 raise FileNotFoundError(f"Credentials file not found: {cred_path}")
             
             cred = credentials.Certificate(cred_path)
