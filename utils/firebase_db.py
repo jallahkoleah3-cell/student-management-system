@@ -14,13 +14,20 @@ def get_firebase_creds():
     """Get Firebase credentials from environment or secrets"""
     import streamlit as st
     
+    # LOCAL DEVELOPMENT - FIRST priority when .env exists
+    if os.path.exists('firebase-key.json'):
+        print("🔍 Found firebase-key.json locally - using local file")
+        return 'firebase-key.json'
+    elif os.path.exists('../firebase-key.json'):
+        print("🔍 Found firebase-key.json in parent directory")
+        return '../firebase-key.json'
+    
     # Check if running on Streamlit Cloud
-    if 'FIREBASE_CREDENTIALS' in os.environ:
+    elif 'FIREBASE_CREDENTIALS' in os.environ:
         print("🔍 Found FIREBASE_CREDENTIALS in environment")
         creds_json = os.environ['FIREBASE_CREDENTIALS']
         print(f"🔍 Credentials length: {len(creds_json)} characters")
         
-        # Load from environment
         if isinstance(creds_json, str):
             try:
                 creds = json.loads(creds_json)
@@ -31,7 +38,6 @@ def get_firebase_creds():
         else:
             creds = creds_json
         
-        # Write to a temporary file
         temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
         json.dump(creds, temp_file)
         temp_file.close()
@@ -43,7 +49,6 @@ def get_firebase_creds():
         creds_json = st.secrets['FIREBASE_CREDENTIALS']
         print(f"🔍 Credentials length: {len(str(creds_json))} characters")
         
-        # Load from secrets
         if isinstance(creds_json, str):
             try:
                 creds = json.loads(creds_json)
@@ -54,19 +59,11 @@ def get_firebase_creds():
         else:
             creds = creds_json
         
-        # Write to a temporary file
         temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
         json.dump(creds, temp_file)
         temp_file.close()
         return temp_file.name
     
-    # Local development - use local file
-    elif os.path.exists('firebase-key.json'):
-        print("🔍 Found firebase-key.json locally")
-        return 'firebase-key.json'
-    elif os.path.exists('../firebase-key.json'):
-        print("🔍 Found firebase-key.json in parent directory")
-        return '../firebase-key.json'
     else:
         print("❌ No credentials found anywhere!")
         return None

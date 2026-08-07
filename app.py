@@ -16,19 +16,6 @@ import utils.pages.admin_announcements as admin_announcements
 import utils.pages.teacher_announcements as teacher_announcements
 import utils.pages.student_announcements as student_announcements
 
-import traceback
-import sys
-
-try:
-    # ALL your existing imports go here...
-    import pandas as pd
-    from datetime import datetime, timedelta
-    # ... etc ...
-except Exception as e:
-    st.error(f"❌ Import Error: {e}")
-    st.code(traceback.format_exc())
-    st.stop()
-
 # ---------- STREAMLIT CLOUD SECRETS ----------
 import os
 import json
@@ -36,7 +23,6 @@ import json
 # Load secrets from Streamlit Cloud
 if 'FIREBASE_CREDENTIALS' in os.environ:
     print("✅ Running on Streamlit Cloud - loading secrets from environment")
-    # The Firebase credentials are already handled in firebase_db.py
 else:
     print("🔍 Running locally - using .env file")
 
@@ -215,14 +201,14 @@ def main():
                 "📢 Announcements": teacher_announcements.show,
             }
         elif role == 'Student':
-#            pages = {
- #               "📊 Dashboard": student_dashboard,
- #               "👤 My Profile": student_profile,
- #               "📈 My Grades": student_grades,
- #               "📅 My Attendance": student_attendance,
- #               "📢 Announcements": student_announcements.show,
- #           }
-#        elif role == 'Parent':
+            pages = {
+                "📊 Dashboard": student_dashboard,
+                "👤 My Profile": student_profile,
+                "📈 My Grades": student_grades,
+                "📅 My Attendance": student_attendance,
+                "📢 Announcements": student_announcements.show,
+            }
+        elif role == 'Parent':
             pages = {
                 "📊 Dashboard": parent_dashboard,
                 "👨‍👩‍👦 My Children": parent_children,
@@ -647,14 +633,12 @@ def teacher_attendance(user):
         else:
             st.warning(f"⚠️ {msg}")
 
-# ---------- STUDENT PAGES (PROFESSIONAL VERSION) ----------
+# ---------- STUDENT PAGES ----------
 def student_dashboard(user):
     st.header("📚 Student Dashboard")
     
-    # Get the student's ID from their user data
     student_id = user.get('student_id') or user.get('uid')
     
-    # If no student_id, try to find it from the users collection
     if not student_id:
         email = user.get('email')
         if email:
@@ -664,11 +648,9 @@ def student_dashboard(user):
                     student_id = s.get('student_id') or s.get('uid')
                     break
     
-    # If still no student_id, try using uid directly
     if not student_id:
         student_id = user.get('uid')
     
-    # Get student data
     student = db.get_student(student_id)
     
     if student:
@@ -676,8 +658,6 @@ def student_dashboard(user):
         
         with col1:
             st.subheader("👤 My Profile")
-            
-            # Professional profile card
             st.markdown(f"""
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #e9ecef;">
                 <p style="margin: 8px 0; font-size: 16px;">📛 <strong>Full Name:</strong> {student.get('full_name', 'N/A')}</p>
@@ -697,7 +677,6 @@ def student_dashboard(user):
             grades = db.get_student_grades(student_id)
             attendance = db.get_student_attendance(student_id)
             
-            # Stats cards
             col_stats1, col_stats2 = st.columns(2)
             
             with col_stats1:
@@ -726,7 +705,6 @@ def student_dashboard(user):
                 else:
                     st.info("📅 No attendance records yet")
             
-            # Additional stats
             st.markdown("<br>", unsafe_allow_html=True)
             with st.container():
                 col_info1, col_info2 = st.columns(2)
@@ -742,7 +720,6 @@ def student_dashboard(user):
             grades = db.get_student_grades(student_id)
             if grades:
                 df = pd.DataFrame(grades)
-                # Select and rename columns for display
                 display_df = df[['subject', 'marks', 'grade', 'exam_type', 'date']].copy()
                 display_df.columns = ['Subject', 'Marks', 'Grade', 'Exam Type', 'Date']
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
@@ -754,7 +731,6 @@ def student_dashboard(user):
             attendance = db.get_student_attendance(student_id)
             if attendance:
                 df = pd.DataFrame(attendance)
-                # Select and rename columns for display
                 display_df = df[['date', 'status']].copy()
                 display_df.columns = ['Date', 'Status']
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
@@ -766,12 +742,10 @@ def student_dashboard(user):
 def student_profile(user):
     st.header("👤 My Profile")
     
-    # Get student_id from user data
     student_id = user.get('student_id') or user.get('uid')
     student = db.get_student(student_id)
     
     if student:
-        # Professional profile card
         st.markdown(f"""
         <div style="background-color: #f8f9fa; padding: 25px; border-radius: 12px; border: 1px solid #e9ecef; max-width: 600px;">
             <h3 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">👤 Student Profile</h3>
@@ -792,24 +766,20 @@ def student_profile(user):
 def student_grades(user):
     st.header("📈 My Grades")
     
-    # Get student_id from user data
     student_id = user.get('student_id') or user.get('uid')
     grades = db.get_student_grades(student_id)
     
     if grades:
         df = pd.DataFrame(grades)
-        # Clean display
         display_df = df[['subject', 'marks', 'grade', 'exam_type', 'date']].copy()
         display_df.columns = ['Subject', 'Marks', 'Grade', 'Exam Type', 'Date']
         st.dataframe(display_df, use_container_width=True, hide_index=True)
         
-        # Chart
         fig = px.bar(df, x='subject', y='marks', title="📊 My Grades by Subject", color='grade', text='marks')
         fig.update_traces(textposition='outside')
         fig.update_layout(showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Summary stats
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("📊 Average", f"{df['marks'].mean():.1f}%")
@@ -823,18 +793,15 @@ def student_grades(user):
 def student_attendance(user):
     st.header("📅 My Attendance")
     
-    # Get student_id from user data
     student_id = user.get('student_id') or user.get('uid')
     attendance = db.get_student_attendance(student_id)
     
     if attendance:
         df = pd.DataFrame(attendance)
-        # Clean display
         display_df = df[['date', 'status']].copy()
         display_df.columns = ['Date', 'Status']
         st.dataframe(display_df, use_container_width=True, hide_index=True)
         
-        # Statistics
         present = len(df[df['status'] == 'Present'])
         total = len(df)
         percentage = (present / total * 100) if total > 0 else 0
@@ -847,7 +814,6 @@ def student_attendance(user):
         with col3:
             st.metric("📊 Attendance", f"{percentage:.1f}%")
         
-        # Mini chart
         status_counts = df['status'].value_counts().reset_index()
         status_counts.columns = ['Status', 'Count']
         fig = px.pie(status_counts, values='Count', names='Status', title="Attendance Breakdown", color='Status')
@@ -855,3 +821,25 @@ def student_attendance(user):
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("📭 No attendance records.")
+
+# ---------- PARENT PAGES ----------
+def parent_dashboard(user):
+    st.header("👨‍👩‍👦 Parent Dashboard")
+    st.info("📌 Parent dashboard features are coming soon!")
+
+def parent_children(user):
+    st.header("👨‍👩‍👦 My Children")
+    st.info("📌 View your children's progress coming soon!")
+
+def parent_progress(user):
+    st.header("📈 Children's Progress")
+    st.info("📌 Progress tracking coming soon!")
+
+# ---------- DEFAULT ----------
+def default_dashboard(user):
+    st.header("📊 Dashboard")
+    st.write("Welcome to the Student Management System!")
+
+# ---------- RUN APP ----------
+if __name__ == "__main__":
+    main()
